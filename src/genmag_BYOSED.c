@@ -506,8 +506,8 @@ void fetchSED_BYOSED(int EXTERNAL_ID, int NEWEVT_FLAG, double Trest, int MXLAM,
   Py_DECREF(pFLUX);
   Py_DECREF(arrLAM);
   Py_DECREF(arrFLUX);
-  Py_DECREF(pargs);
-  Py_DECREF(pargs2);
+  //Py_DECREF(pargs);
+  //Py_DECREF(pargs2);
   //Py_DECREF(pylamitem);
   //Py_DECREF(pyfluxitem);
 
