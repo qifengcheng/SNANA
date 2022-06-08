@@ -1678,7 +1678,7 @@ int gen_SEARCHEFF ( int ID                  // (I) identifier
   *****/
 
   int  LFIND1_PIPELINE, LFIND2_SPEC, LFIND3_zHOST, MASK ;
-  //  char fnam[]  = "gen_SEARCHEFF" ;
+  char fnam[]  = "gen_SEARCHEFF" ;
 
   // ----------------- BEGIN -------------
 
@@ -1783,7 +1783,7 @@ int gen_SEARCHEFF_PIPELINE(int ID, MJD_DETECT_DEF *MJD_DETECT) {
   double  PHOTPROB, CUTVAL ;
   char CFILT[4];
   int LDMP  = (ID == -39 ); 
-  //  char fnam[] = "gen_SEARCHEFF_PIPELINE";
+  char fnam[] = "gen_SEARCHEFF_PIPELINE";
 
   // ------------- BEGIN -------------
 
@@ -1811,6 +1811,7 @@ int gen_SEARCHEFF_PIPELINE(int ID, MJD_DETECT_DEF *MJD_DETECT) {
     OBSMARKER_DETECT[obs] = 0 ;
     MAG  = SEARCHEFF_DATA.MAG[obs] ;
     MJD  = SEARCHEFF_DATA.MJD[obs] ;
+
     if ( MAG == MAG_UNDEFINED ) { continue ; }
     if ( !FIRST ) {  FIRST=1; obsLast=obs; MJD_LAST= MJD; continue;  }       
     MJD_DIF     = fabs(MJD-MJD_LAST);
@@ -2065,7 +2066,6 @@ double GETEFF_PIPELINE_DETECT(int obs) {
   MJD       = SEARCHEFF_DATA.MJD[obs] ;
   NPE_SAT   = SEARCHEFF_DATA.NPE_SAT[obs] ; // Npe above saturation
 
-
   if ( isnan(SNR) ) {
     print_preAbort_banner(fnam);
 
@@ -2102,6 +2102,32 @@ double GETEFF_PIPELINE_DETECT(int obs) {
   EFF_atmin = SEARCHEFF_DETECT[IMAP].EFF[0] ;
   VAL_atmax = SEARCHEFF_DETECT[IMAP].VAL[NBIN_EFF-1] ;
   VAL_atmin = SEARCHEFF_DETECT[IMAP].VAL[0] ;
+
+  // - - - - - - - - - - - - - -
+  // NOTES FOR FUTURE OPTION TO TRIGGER ON SINGLE-IMAGE DETECTIONS
+  // Jun 2 2022 .xyz 
+  // for option to simulated single-exposure detections, 
+  // strip off NEXPOSE here and SNR -> SNR / sqrt(NEXPOSE). 
+  // For NEXPOSE chances to get a detection, 
+  //    EFF -> 1-(1-EFF_1)^NEXPOSE
+  // E.g., NEXPOSE=10 and EFF_1 = 0.02 -> EFF = 1 - 0.98^10 = 0.183
+  // E.g., NEXPOSE=10 and EFF_1 = 0.05 -> EFF = 1 - 0.95^10 = 0.401
+  // E.g., NEXPOSE=10 and EFF_1 = 0.50 -> EFF = 1 - 0.50^10 = 0.999
+  // Above assumes stat-independent detection prob .... but is this
+  // correct, or are the probabilities correlated?
+  // - - - - - - - - - - - - - -
+
+  /*   
+
+   bool LDETCT_SINGLE = TRUE;
+   if LDETECT_SINGLE{
+    SNR *= 1.0/(double) NEXPOSE; 
+
+}
+
+
+ */
+
 
   if ( SEARCHEFF_FLAG == FLAG_EFFSNR_DETECT ) {
     VAL = SNR ;
@@ -2645,7 +2671,6 @@ double interp_SEARCHEFF_zHOST(void) {
   // E.g., EFF = 0, 0.7; Pnoz=(1-0)*(1-0.7) = 0.3; EFF = 1-0.3 = 0.7
   EFF = 1.0 - Pnoz ;
 
-  // .xyz
   if ( NMATCH == 0 ) {
     sprintf(c1err, "Invalid NMATCH=%d for", NMATCH );
     sprintf(c2err, "field = '%s'  PEAKMJD=%.3f", field_data, PEAKMJD );
