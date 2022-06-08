@@ -43,7 +43,7 @@
 
   Feb 4 2021: add python-like dictionary utility (e.g., for FIELD-dependence)
   Jun 2 2021: MXWORDFILE_PARSE_WORDS -> 2M (was 1 million)
-
+  
 ********************************************************/
 
 
@@ -63,7 +63,8 @@
 #include "sntools_genGauss_asym.h"
 #include "sntools_genExpHalfGauss.h"
 
-#define  SNANA_VERSION_CURRENT  "v11_04k"       
+// --------------------------------------------------
+#define  SNANA_VERSION_CURRENT  "v11_04l"        
 //#define  ONE_RANDOM_STREAM  // enable this for Mac (D.Jones, July 2020)
 //#define  MACOS              // another MAC OS option, D.Jones, Sep 2020
 

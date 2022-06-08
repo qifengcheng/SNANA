@@ -2117,6 +2117,7 @@ double GETEFF_PIPELINE_DETECT(int obs) {
   // correct, or are the probabilities correlated?
   // - - - - - - - - - - - - - -
 
+<<<<<<< HEAD
   /*   
 
    bool LDETCT_SINGLE = TRUE;
@@ -2129,6 +2130,8 @@ double GETEFF_PIPELINE_DETECT(int obs) {
  */
 
 
+=======
+>>>>>>> 16b29685535c675c02aaaad5840434cc166a5457
   if ( SEARCHEFF_FLAG == FLAG_EFFSNR_DETECT ) {
     VAL = SNR ;
   }

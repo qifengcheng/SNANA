@@ -41,6 +41,7 @@ int match_cidlist_init(char *fileName, int *OPTMASK, char *varList_store) {
   //    WARNING: returned OPTMASK value is changed if 
   //             IDSURVEY doesnt exist.
   //
+  // OPTMASK += 8 -> this is first file, so reset AUTOSTORE
   //
   // varList_store : optional comma-sep list of variables to store,
   //                 to be retreived later for any SNID.
@@ -56,7 +57,8 @@ int match_cidlist_init(char *fileName, int *OPTMASK, char *varList_store) {
   //
 
   bool IS_FILE = ( strstr(fileName,DOT) != NULL );
-  bool USE_IDSURVEY    = ( *OPTMASK & 1 );
+  bool USE_IDSURVEY       = ( *OPTMASK & 1 );
+  bool FIRST_FILE         = ( *OPTMASK & 8 );
   bool REFAC        = ( *OPTMASK & 64 );
   bool LEGACY       = !REFAC ;
 
@@ -82,6 +84,7 @@ int match_cidlist_init(char *fileName, int *OPTMASK, char *varList_store) {
   if ( strlen(fileName) == 0 )  { 
     match_cid_hash("",-1,0);  
     HASH_STORAGE.NVAR = 0;
+    SNTABLE_AUTOSTORE_RESET();  // May 2022
     return 0; 
   }
 
@@ -152,7 +155,8 @@ int match_cidlist_init(char *fileName, int *OPTMASK, char *varList_store) {
       // loop over words on this line     
       for ( iwd = 0; iwd < NWD; iwd++ ) {
 	get_PARSE_WORD(langC, iwd, CCID);
-	match_cid_hash(STRINGID, ILIST, NCID);
+	// xxx mark delete May 26 2022 match_cid_hash(STRINGID, ILIST, NCID);
+	match_cid_hash(CCID, ILIST, NCID);
 	NCID++ ;
         if ( strstr(CCID,COMMA) != NULL || strstr(CCID,COLON) != NULL ||
              strstr(CCID,"=")   != NULL )   {
@@ -171,6 +175,8 @@ int match_cidlist_init(char *fileName, int *OPTMASK, char *varList_store) {
   // - - - - - - - - - - - 
   if ( FORMAT_TABLE ) {
     OPT_AUTOSTORE = 1+4; // 1=print each var; 4=append next file
+    if ( FIRST_FILE ) { SNTABLE_AUTOSTORE_RESET(); }
+
     NCID = SNTABLE_AUTOSTORE_INIT(fileName,"CIDLIST", "ALL", OPT_AUTOSTORE);
 
     if ( IFILE == 0 ) {
@@ -8686,7 +8692,6 @@ FILE *open_TEXTgz(char *FILENAME, const char *mode, int *GZIPFLAG ) {
     //    printf(" xxx istat=%3d for '%s' \n", istat_gzip,  gzipFile);
     //    printf(" xxx istat=%3d for '%s' \n", istat_unzip, unzipFile);
 
-    // .xyz
     bool FOUND_2FILES = ( istat_gzip==0 && istat_unzip==0 );
     if ( FOUND_2FILES && N_ITER==1 ) { 
       printf("\t found gzip and unzip file ... try again in 5 sec... \n");

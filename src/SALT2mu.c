@@ -3553,7 +3553,7 @@ void applyCut_chi2max(void) {
 
 
   if ( NREJ > 0 ) { 
-    printf("\n Setup z-bins again after chi2max cut:");
+    printf("\n Setup z-bins again after chi2max cut: \n");
     fflush(stdout);
     setup_zbins_fit(); 
   }  
@@ -10771,6 +10771,7 @@ void makeMap_sigmu_biasCor(int IDSAMPLE) {
   // Jun 29 2021: fix bug setting im index for logmass.
   // Sep 14 2021: little cleanup/refac 
   // Sep 16 2021: add dump utils; see i1d_dump_mucovscale and OPTMASK
+  // Jun 05 2022: write SALT2 fit params in abort msg for crazy muErr
 
   int NBIASCOR_CUTS    = SAMPLE_BIASCOR[IDSAMPLE].NBIASCOR_CUTS ;
   int NBIASCOR_ALL     = INFO_BIASCOR.TABLEVAR.NSN_ALL ;
@@ -10989,6 +10990,14 @@ void makeMap_sigmu_biasCor(int IDSAMPLE) {
 	     z, a, b, gDM);
       printf("\t ia,ib,ig = %d, %d, %d \n", ia, ib, ig);
       printf("\t istat_cov = %d \n", istat_cov);
+
+      for(ipar=0; ipar < NLCPAR; ipar++ ) { 
+	char *name = BIASCOR_NAME_LCFIT[ipar];
+	float val  = INFO_BIASCOR.TABLEVAR.fitpar[ipar][ievt]; 
+	float err  = INFO_BIASCOR.TABLEVAR.fitpar_err[ipar][ievt]; 
+	printf("\t %3s = %f +_ %f \n", name, val, err); 
+	fflush(stdout);
+      }
 
       sprintf(c1err,"Invalid muErrsq=%f for ievt=%d (SNID=%s)", 
 	      muErrsq, ievt, name );
@@ -12264,7 +12273,7 @@ void  makeMap_binavg_biasCor(int IDSAMPLE) {
   }
 
 
-  // loop over biasCor sample ... xyz
+  // loop over biasCor sample ...
   for(isp=0; isp < NROW; isp++ ) {
 
     irow = SAMPLE_BIASCOR[IDSAMPLE].IROW_CUTS[isp] ;
@@ -12765,6 +12774,9 @@ int get_fitParBias(char *cid,
   //
   // Dec 21 2020: return negative number on error to flag error type
   //              Still return 1 for success.
+  // 
+  // Jun 2022: improve dump output
+  //
   // -----------------------------------------
   // strip BIASCORLIST inputs into local variables
   double z   = BIASCORLIST->z ;
@@ -12801,6 +12813,7 @@ int get_fitParBias(char *cid,
   int IZMIN, IZMAX, IMMIN, IMMAX, ICMIN, ICMAX, IX1MIN, IX1MAX ;
   int j1d, ia, ib, ig, iz, im, ix1, ic, ipar ;
   int NperCell, NSUM_Cell, NCELL_INTERP_TOT, NCELL_INTERP_USE ;
+  int BAD_BINSIZE=0 ;
   bool USE_CENTER_CELL;
 
   double WGT, SUM_WGT, BINSIZE;
@@ -12894,7 +12907,8 @@ int get_fitParBias(char *cid,
     printf("\n") ;
     printf(" xxx ---------------------------------------------------- \n") ;
     if ( BADBIAS ) { printf("\t !!!!! BAD BIAS DETECTED !!!!! \n"); }
-    printf(" xxx %s DUMP for CID=%s \n", fnam, cid );
+    printf(" xxx %s DUMP for CID=%s  BIASCOR(alpha,beta) = %.2f, %.2f\n", 
+	   fnam, cid, a, b );
     printf(" xxx  input: z=%.4f m=%.2f  mb,x1,c = %.2f, %.3f, %.3f \n",
 	   z, m, mB, x1, c ); 
 
@@ -12967,10 +12981,15 @@ int get_fitParBias(char *cid,
   }
 
   // return if any binSize is not defined
-  if ( BINSIZE_z  == 0.0 || BINSIZE_z  > 9000. ) { return -5; }
-  if ( BINSIZE_m  == 0.0 || BINSIZE_m  > 9000. ) { return -6; }
-  if ( BINSIZE_x1 == 0.0 || BINSIZE_x1 > 9000. ) { return -7; }
-  if ( BINSIZE_c  == 0.0 || BINSIZE_c  > 9000. ) { return -8; }
+  if ( BINSIZE_z  == 0.0 || BINSIZE_z  > 9000. ) { BAD_BINSIZE = -5; }
+  if ( BINSIZE_m  == 0.0 || BINSIZE_m  > 9000. ) { BAD_BINSIZE = -6; }
+  if ( BINSIZE_x1 == 0.0 || BINSIZE_x1 > 9000. ) { BAD_BINSIZE = -7; }
+  if ( BINSIZE_c  == 0.0 || BINSIZE_c  > 9000. ) { BAD_BINSIZE = -8; }
+
+  if ( BAD_BINSIZE < 0 ) {
+    if ( LDMP ) { printf(" xxx\t BAD BINSIZE --> FAIL\n"); fflush(stdout);  }
+    return BAD_BINSIZE ;
+  }
 
   
   // ----------------------------------------------
@@ -13073,16 +13092,24 @@ int get_fitParBias(char *cid,
   } // end iz
   
   
+  int  NCELL_INTERP_MIN = 3;
+  bool PASSCUT_NCELL_INTERP = ( NCELL_INTERP_USE >= NCELL_INTERP_MIN );
+
   if ( LDMP ) {
+    char passfail[] = "PASS";
+    if ( !PASSCUT_NCELL_INTERP ) { sprintf(passfail,"FAIL"); }
+    
     printf("\n") ;
-    printf(" xxx\t SUM_WGT = %le   NCELL_INTERP_USE=%d of %d (CUT=3)\n", 
-	   SUM_WGT, NCELL_INTERP_USE, NCELL_INTERP_TOT );
+    printf(" xxx\t SUM_WGT = %le  \n", 	SUM_WGT );
+    printf(" xxx\t NCELL_INTERP_USE=%d of %d --> %s CUT>=%d\n", 
+	   SUM_WGT, NCELL_INTERP_USE, NCELL_INTERP_TOT, 
+	   passfail, NCELL_INTERP_MIN );
     fflush(stdout);
   }
 
    // require enough cells for interpolation (July 2016)
-   if ( NCELL_INTERP_USE < 3 ) { return(-9); } 
-   if ( !USE_CENTER_CELL     ) { return(-10); } // 9.29.2020
+   if ( !PASSCUT_NCELL_INTERP ) { return(-9) ; } 
+   if ( !USE_CENTER_CELL      ) { return(-10); } // 9.29.2020
 
    // require both z-bins to be used.
    int ISKIP = 0 ;
@@ -22624,10 +22651,10 @@ void SUBPROCESS_OUTPUT_TABLE_LOAD(int ISN, int ITABLE) {
   IBIN1D = get_1DINDEX(10+ITABLE, NVAR, ibin_per_var);
 
 
-  int MEMD, LEN_REALLOC = 100; // increase to 1000 after valgrind debug xyzz
+  int MEMD, LEN_REALLOC = 100; // increase to 1000 after valgrind debug 
   NEVT       = OUTPUT_TABLE->NEVT[IBIN1D];
   if ( NEVT == 0 ) {
-    // malloc before any events are stored xyzz
+    // malloc before any events are stored 
     MEMD = LEN_REALLOC * sizeof(double);
     OUTPUT_TABLE->MURES_LIST[IBIN1D] = (double*) malloc(MEMD); 
     if ( LPRINT_MALLOC ) {
@@ -22725,10 +22752,9 @@ void SUBPROCESS_OUTPUT_WRITE(void) {
 	  tmpName, sigint, ERR );
 
   sprintf(tmpName, "MAXPROB_RATIO") ;
-  fprintf(FP_OUT, "# FITPAR:  %-14s = %10.5f  #Beware, value > 1 violates bounding function \n",
+  fprintf(FP_OUT, "# FITPAR:  %-14s = %10.5f  "
+	  "#Beware, value > 1 violates bounding function \n",
           tmpName, SUBPROCESS.MAXPROB_RATIO); 
-
-  // .xyz write dchi2red_dsigint here ... for Brodie
 
   fflush(FP_OUT);
 

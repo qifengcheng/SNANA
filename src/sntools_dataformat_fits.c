@@ -335,8 +335,8 @@ void wr_snfitsio_init_head(void) {
   // add if-block later if possible; to avoid writing garbage for most sims
   wr_snfitsio_addCol( "1K", "HOSTGAL_OBJID_UNIQUE",  itype );
 
-    // add Q posteriors
- for ( iq=0; iq < SNDATA.HOSTGAL_NZPHOT_Q; iq++ ) {
+  // add zPHOT quantiles
+  for ( iq=0; iq < SNDATA.HOSTGAL_NZPHOT_Q; iq++ ) {
     sprintf(parName,"HOSTGAL_%s", HOSTLIB.VARNAME_ZPHOT_Q[iq]);
     wr_snfitsio_addCol( "1E", parName, itype );
   }
@@ -401,7 +401,7 @@ void wr_snfitsio_init_head(void) {
       wr_snfitsio_addCol( "1E", parName, itype );
     }
 
-    // add Q posteriors
+    // add zPHOT quantiles
     for ( iq=0; iq < SNDATA.HOSTGAL_NZPHOT_Q; iq++ ) {
       sprintf(parName,"HOSTGAL2_%s", HOSTLIB.VARNAME_ZPHOT_Q[iq]);
       wr_snfitsio_addCol( "1E", parName, itype );
@@ -3033,7 +3033,7 @@ int RD_SNFITSIO_GLOBAL(char *parName, char *parString) {
   // Feb 10, 2021: check for SIM_SL_FLAG (strong lens)
   //
 
-  int ipar, ivar ;
+  int ipar, ivar, q ;
   char key[60], tmpString[60];
   char fnam[] = "RD_SNFITSIO_GLOBAL" ;
 
@@ -3141,6 +3141,15 @@ int RD_SNFITSIO_GLOBAL(char *parName, char *parString) {
       sprintf(key,"PRIVATE%d", ivar);
       if ( strcmp(parName,key) == 0 ) 
 	{  sprintf(tmpString,"%s", SNDATA.PRIVATE_KEYWORD[ivar] );  }
+    }
+  }
+
+  // check optional PERCENTILES for photo-z quantiles
+  if ( SNDATA.HOSTGAL_NZPHOT_Q > 0 ) {
+    for(q=0; q < SNDATA.HOSTGAL_NZPHOT_Q; q++ ) {
+      sprintf(key,"PERCENTILE_%s%2.2d", PREFIX_ZPHOT_Q, q);
+      if ( strcmp(parName,key) == 0 ) 
+	{ sprintf(tmpString,"%s", SNDATA.HOSTGAL_PERCENTILE_ZPHOT_Q[q] ); }
     }
   }
 
@@ -3465,11 +3474,11 @@ int RD_SNFITSIO_EVENT(int OPT, int isn) {
       for(iq=0; iq < N_Q; iq++ ) {
 	int PCT   = SNDATA.HOSTGAL_PERCENTILE_ZPHOT_Q[iq];
 	float *zq = &SNDATA.HOSTGAL_ZPHOT_Q[igal][iq];
-        sprintf(KEY,"%s_%s%d", PREFIX, PREFIX_ZPHOT_Q, PCT); 
+        sprintf(KEY,"%s_%s%3.3d", PREFIX, PREFIX_ZPHOT_Q, PCT); 
         j++ ; NRD=RD_SNFITSIO_FLT(isn,KEY,zq,&SNFITSIO_READINDX_HEAD[j]);
 
-	printf(" xxx %s: KEY = %s = %.4f for PCT=%d \n",
-	       fnam, KEY, zq, PCT); fflush(stdout);
+	//printf(" xxx %s: KEY = %s = %.4f for PCT=%d \n",
+	//     fnam, KEY, zq, PCT); fflush(stdout);
       }
       
 
@@ -4382,7 +4391,7 @@ void rd_snfitsio_zphot_q(void) {
   SNDATA.HOSTGAL_NZPHOT_Q = N_Q ;  
 
   // read list of percentiles from keys of the form
-  // PERCENTILE_ZPHOT_Q## .xyz
+  // PERCENTILE_ZPHOT_Q## 
   for(ivar=0; ivar < N_Q; ivar++ ) {
     sprintf(keyname,"PERCENTILE_%s%2.2d", PREFIX_ZPHOT_Q, ivar);
     
@@ -4390,6 +4399,9 @@ void rd_snfitsio_zphot_q(void) {
     sprintf(comment,"Read %s", keyname);
     fits_read_key(fp, TINT, keyname, &PCT, comment, &istat );
     
+    //    printf(" xxx %s: PCT=%d for ivar=%d (istat=%d)\n", 
+    //	   fnam, PCT, ivar, istat );
+
     if ( istat == 0 ) {
       SNDATA.HOSTGAL_PERCENTILE_ZPHOT_Q[NFIND_KEY] = PCT ;
       NFIND_KEY++ ;
